@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Inventory Request — Holper's</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1e293b">
+
+  <!-- iOS home screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Inventory Request">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f172a;
+      --surface:  #1e293b;
+      --surface2: #263348;
+      --border:   #334155;
+      --text:     #f1f5f9;
+      --muted:    #94a3b8;
+      --blue:     #3b82f6;
+      --green:    #10b981;
+      --yellow:   #f59e0b;
+      --red:      #ef4444;
+      --radius:   12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding-bottom: 150px;
+    }
+
+    /* ── Bottom tab bar ── */
+    .tab-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+      background: var(--surface); border-top: 1px solid var(--border);
+      display: flex;
+    }
+    .tab-nav {
+      flex: 1; background: none; border: none; cursor: pointer;
+      padding: 8px 0 10px; color: var(--muted);
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-size: .68rem; font-family: inherit;
+    }
+    .tab-nav .tab-ico { font-size: 1.25rem; line-height: 1; }
+    .tab-nav.active { color: var(--blue); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .rec-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; margin: 0 12px 10px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .rec-card.low { border-color: var(--yellow); background: rgba(245,158,11,.08); }
+    .rec-add {
+      background: var(--blue); color: #fff; border: none; border-radius: 8px;
+      padding: 8px 14px; font-size: .82rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .rec-card.low .rec-add { background: var(--yellow); color: #1a1200; }
+    .hist-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; margin: 0 12px 10px;
+    }
+    .pill { font-size: .68rem; padding: 2px 9px; border-radius: 20px; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-title { font-size: 1rem; font-weight: 700; }
+    .header-sub   { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .logout-btn {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); font-size: .75rem; padding: 5px 10px;
+      border-radius: 6px; cursor: pointer;
+    }
+
+    /* ── Tech selector ── */
+    .tech-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tech-bar label { font-size: .8rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .tech-bar select {
+      flex: 1;
+      background: var(--bg);
+      border: 2px solid var(--blue);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .95rem;
+      padding: 8px 10px;
+      appearance: none;
+    }
+    .tech-bar select:focus { outline: none; border-color: var(--yellow); }
+
+    /* ── Section ── */
+    .section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: 14px 16px 6px;
+    }
+
+    /* ── Product card ── */
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin: 6px 12px;
+      overflow: hidden;
+      transition: border-color .15s;
+    }
+    .product-card.active { border-color: var(--blue); }
+
+    .product-header {
+      padding: 12px 14px 8px;
+    }
+    .product-name {
+      font-size: .95rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .product-note {
+      font-size: .75rem;
+      color: var(--yellow);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* ── Unit toggle ── */
+    .unit-toggle {
+      display: flex;
+      gap: 6px;
+      padding: 0 14px 10px;
+    }
+    .unit-btn {
+      flex: 1;
+      padding: 7px 4px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      line-height: 1.3;
+      transition: all .15s;
+    }
+    .unit-btn.selected {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+
+    /* ── Qty row ── */
+    .qty-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px 14px;
+    }
+    .qty-label { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+    .qty-input {
+      flex: 1;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1.2rem;
+      font-weight: 700;
+      padding: 8px 12px;
+      text-align: center;
+      width: 100%;
+      -moz-appearance: textfield;
+    }
+    .qty-input::-webkit-outer-spin-button,
+    .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .qty-input:focus { outline: none; border-color: var(--blue); }
+    .qty-input.has-value { border-color: var(--green); background: rgba(16,185,129,.06); }
+
+    .qty-stepper {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .step-btn {
+      width: 36px; height: 28px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-btn:active { background: var(--blue); }
+
+    /* ── Bottom bar ── */
+    .bottom-bar {
+      position: fixed;
+      bottom: 62px; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .items-badge {
+      background: var(--blue);
+      color: #fff;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: .78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .review-btn {
+      flex: 1;
+      background: var(--yellow);
+      border: none;
+      border-radius: 10px;
+      color: #0f172a;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 14px;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .review-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .review-btn:not(:disabled):active { opacity: .8; }
+
+    /* ── Review overlay ── */
+    .review-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: var(--bg);
+      flex-direction: column;
+    }
+    .review-overlay.show { display: flex; }
+
+    .review-hdr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .review-hdr-text .review-title { font-size: 1rem; font-weight: 700; }
+    .review-hdr-text .review-sub   { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+    .back-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .85rem;
+      font-weight: 600;
+      padding: 8px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .back-btn:active { background: var(--surface2); }
+
+    .review-items {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px 0;
+    }
+    .review-section-lbl {
+      font-size: .7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: 12px 4px 5px;
+    }
+    .review-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 13px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .review-item-name {
+      font-size: .9rem;
+      font-weight: 600;
+      flex: 1;
+      line-height: 1.35;
+    }
+    .review-item-right { text-align: right; white-space: nowrap; }
+    .review-item-qty {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--green);
+    }
+    .review-item-unit {
+      font-size: .75rem;
+      color: var(--muted);
+      display: block;
+      margin-top: 1px;
+    }
+    .review-edit-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 600;
+      padding: 6px 11px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .review-edit-btn:active { background: var(--surface2); color: var(--text); }
+    .review-total-row {
+      font-size: .8rem;
+      color: var(--muted);
+      padding: 12px 4px 20px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+
+    .review-footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .submit-btn {
+      flex: 1;
+      background: var(--green);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 14px;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .submit-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .submit-btn:not(:disabled):active { opacity: .8; }
+
+    /* ── Success overlay ── */
+    .success-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 32px;
+    }
+    .success-overlay.show { display: flex; }
+    .success-icon { font-size: 4rem; margin-bottom: 16px; }
+    .success-title { font-size: 1.4rem; font-weight: 700; color: var(--green); margin-bottom: 8px; }
+    .success-sub { font-size: .9rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── Empty state ── */
+    .empty-msg {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 20px;
+      font-size: .85rem;
+    }
+
+    /* ── Loading ── */
+    .loading-msg { text-align: center; color: var(--muted); padding: 40px; }
+
+    /* ── Search bar ── */
+    .search-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: sticky;
+      top: 57px;
+      z-index: 9;
+    }
+    .search-icon { font-size: 1rem; flex-shrink: 0; color: var(--muted); }
+    .search-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .95rem;
+      padding: 8px 12px;
+    }
+    .search-input::placeholder { color: var(--muted); }
+    .search-input:focus { outline: none; border-color: var(--blue); }
+    .search-clear {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 5px 8px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .search-clear:active { color: var(--text); background: var(--surface2); }
+    .no-results-msg {
+      text-align: center;
+      color: var(--muted);
+      padding: 32px 20px;
+      font-size: .85rem;
+      display: none;
+    }
+
+    @media (min-width: 500px) {
+      .product-card { margin: 6px auto; max-width: 480px; }
+      .bottom-bar { max-width: 480px; left: 50%; transform: translateX(-50%); border-radius: 12px 12px 0 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">🧪 Inventory Request</div>
+    <div class="header-sub">Holper's Pest Control</div>
+  </div>
+  <button class="logout-btn" onclick="location.href='/logout'">Log out</button>
+</div>
+
+<div class="tech-bar">
+  <label>Your Name:</label>
+  <select id="techSelect" onchange="onTechChange()">
+    <option value="">— Select your name —</option>
+  </select>
+</div>
+
+<!-- Recount alert — admin asked this tech to recount an item -->
+<div id="flagAlert" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.92);padding:18px;overflow-y:auto;align-items:flex-start;justify-content:center">
+  <div style="max-width:460px;width:100%;margin:auto 0">
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:2rem">🚩</div>
+      <div style="font-size:1.2rem;font-weight:800;color:var(--text)">Recount requested</div>
+      <div style="font-size:.85rem;color:var(--muted)">Count what's actually on your truck and enter it below to clear this.</div>
+    </div>
+    <div id="flagAlertBody"></div>
+  </div>
+</div>
+
+<!-- ── Browse tab (unchanged flow: pick products → Review → Submit) ── -->
+<div id="tab-browse" class="tab-panel active">
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="productSearch" class="search-input"
+      placeholder="Search products…"
+      oninput="filterProducts(this.value)"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none" aria-label="Clear search">✕</button>
+  </div>
+  <div id="productArea">
+    <div class="loading-msg">Loading products…</div>
+  </div>
+  <div class="no-results-msg" id="noResultsMsg">No products match "<span id="noResultsTerm"></span>"</div>
+</div>
+
+<!-- ── Your Truck tab (recommendations from par levels) ── -->
+<div id="tab-truck" class="tab-panel">
+  <div id="truckContent" style="padding:14px 0"></div>
+</div>
+
+<!-- ── My Truck tab (actual inventory + self-audit) — dedicated logins only ── -->
+<div id="tab-mytruck" class="tab-panel">
+  <div id="myTruckContent" style="padding:14px 0"></div>
+</div>
+
+<!-- ── History tab (this tech's past requests) ── -->
+<div id="tab-history" class="tab-panel">
+  <div id="historyContent" style="padding:14px 0"></div>
+</div>
+
+<div class="bottom-bar">
+  <span class="items-badge" id="itemsBadge">0 items</span>
+  <button class="review-btn" id="reviewBtn" onclick="openReview()" disabled>Review →</button>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-nav active" id="tabnav-browse" onclick="switchTab('browse')"><span class="tab-ico">🧴</span>Browse</button>
+  <button class="tab-nav" id="tabnav-truck" onclick="switchTab('truck')"><span class="tab-ico">🛒</span>To Get</button>
+  <button class="tab-nav" id="tabnav-mytruck" onclick="switchTab('mytruck')" style="display:none"><span class="tab-ico">🚚</span>My Truck</button>
+  <button class="tab-nav" id="tabnav-history" onclick="switchTab('history')"><span class="tab-ico">🕗</span>History</button>
+</div>
+
+<!-- Review overlay -->
+<div class="review-overlay" id="reviewOverlay">
+  <div class="review-hdr">
+    <div class="review-hdr-text">
+      <div class="review-title">📋 Review Request</div>
+      <div class="review-sub" id="reviewTechName"></div>
+    </div>
+    <button class="back-btn" onclick="closeReview()">← Back</button>
+  </div>
+  <div class="review-items" id="reviewList"></div>
+  <div class="review-footer">
+    <button class="back-btn" onclick="closeReview()" style="padding:13px 18px;font-size:.9rem;">← Back</button>
+    <button class="submit-btn" id="reviewSubmitBtn" onclick="submitRequest()">Submit Request ✓</button>
+  </div>
+</div>
+
+<!-- Success overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-icon">✅</div>
+  <div class="success-title">Request Sent!</div>
+  <div class="success-sub">Your inventory request has been submitted.<br>The warehouse will process it shortly.</div>
+</div>
+
+<script>
+  let _products = [];
+  let _quantities = {};   // product_id → {qty, mode}
+  let _techId = null;
+  let _me = null;
+
+  async function api(url, opts={}) {
+    const r = await fetch(url, {
+      headers: {'Content-Type':'application/json'},
+      ...opts
+    });
+    // Session expired → server bounced us to the login page (fetch follows the
+    // 302, so we land on /login with a 200 + HTML body). Detect and recover.
+    if (r.redirected && /\/login/.test(r.url)) { handleSessionExpired(); throw new Error('Session expired'); }
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || r.statusText); }
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) { handleSessionExpired(); throw new Error('Session expired'); }
+    return r.json();
+  }
+
+  function handleSessionExpired() {
+    saveDraft();                       // keep the in-progress request
+    if (window._redirectingToLogin) return;
+    window._redirectingToLogin = true;
+    alert('You were logged out. Your items are saved — log back in and tap Review to finish.');
+    location.href = '/login';
+  }
+
+  // ── Draft persistence: survive page reloads / iOS backgrounding ──
+  const DRAFT_KEY = 'holpers_req_draft_v1';
+  function saveDraft() {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ techId: _techId, quantities: _quantities, ts: Date.now() })); } catch(e) {}
+  }
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+  }
+  function restoreDraft() {
+    let draft = null;
+    try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch(e) {}
+    if (!draft) return;
+    // Expire stale drafts after 12h so an old cart doesn't resurface days later
+    if (draft.ts && (Date.now() - draft.ts) > 12*60*60*1000) { clearDraft(); return; }
+    const sel = document.getElementById('techSelect');
+    // A dedicated login is locked to its technician — never let a stale draft
+    // reassign it to someone else (only shared logins restore the picked name).
+    if (!(_me && _me.technician_id) && draft.techId && [...sel.options].some(o => o.value == draft.techId)) {
+      sel.value = draft.techId;
+      _techId = draft.techId;
+    }
+    if (draft.quantities && typeof draft.quantities === 'object') {
+      _quantities = {};
+      Object.entries(draft.quantities).forEach(([pid, v]) => {
+        if (!v || !(v.qty > 0)) return;
+        const p = _products.find(x => x.id == pid);
+        if (!p) return;                // product no longer exists — skip
+        _quantities[pid] = { qty: v.qty, mode: v.mode || 'usage' };
+        setMode(pid, _quantities[pid].mode);
+        const input = document.getElementById(`qty-${pid}`);
+        const card  = document.getElementById(`card-${pid}`);
+        if (input) { input.value = fmtQty(v.qty); input.classList.add('has-value'); }
+        if (card) card.classList.add('active');
+      });
+    }
+    updateSubmitBtn();
+  }
+
+  async function loadData() {
+    const [prods, techs] = await Promise.all([
+      api('/api/products'),
+      api('/api/technicians')
+    ]);
+    _products = (prods || []).filter(p => p.active);
+
+    const sel = document.getElementById('techSelect');
+    techs.filter(t => t.active).sort((a,b)=>a.name.localeCompare(b.name)).forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.id; o.textContent = t.name;
+      sel.appendChild(o);
+    });
+    // Remember the tech chosen on this phone (each phone is one person, even
+    // though the login is shared across phones).
+    try {
+      const lastTech = localStorage.getItem('holpers_last_tech');
+      if (lastTech && [...sel.options].some(o => o.value == lastTech)) {
+        sel.value = lastTech; _techId = lastTech;
+      }
+    } catch(e) {}
+
+    // Dedicated login → lock the identity to that technician (no picker) and
+    // unlock the My Truck self-audit tab (piloting with dedicated logins first).
+    if (_me && _me.technician_id) {
+      _techId = String(_me.technician_id);
+      if ([...sel.options].some(o => o.value == _techId)) sel.value = _techId;
+      sel.disabled = true;
+      const lbl = document.querySelector('.tech-bar label');
+      if (lbl) lbl.textContent = 'Signed in as:';
+      const mt = document.getElementById('tabnav-mytruck');
+      if (mt) mt.style.display = 'flex';
+    }
+
+    renderProducts();
+    restoreDraft();   // bring back any in-progress request after a reload
+    updateSubmitBtn();
+  }
+
+  function onTechChange() {
+    _techId = document.getElementById('techSelect').value || null;
+    updateSubmitBtn();
+    saveDraft();
+    if (_techId) { try { localStorage.setItem('holpers_last_tech', _techId); } catch(e){} }
+    // Tech changed → the truck/history tabs are per-tech, so invalidate + reload
+    _truckLoaded = false; _historyLoaded = false; _myTruckLoaded = false;
+    if (_currentTab === 'truck')   loadYourTruck();
+    if (_currentTab === 'mytruck') loadMyTruck();
+    if (_currentTab === 'history') loadHistoryTab();
+    if (typeof loadMyFlags === 'function') loadMyFlags();   // shared login → recheck for the picked tech
+  }
+
+  // ── Tabs (Browse / Your Truck / History) ──
+  let _currentTab = 'browse', _truckLoaded = false, _historyLoaded = false, _myTruckLoaded = false;
+  function switchTab(name) {
+    _currentTab = name;
+    ['browse','truck','mytruck','history'].forEach(t => {
+      document.getElementById('tab-'+t).classList.toggle('active', t === name);
+      const nav = document.getElementById('tabnav-'+t);
+      if (nav) nav.classList.toggle('active', t === name);
+    });
+    if (name === 'truck'   && !_truckLoaded)    loadYourTruck();
+    if (name === 'mytruck' && !_myTruckLoaded)  loadMyTruck();
+    if (name === 'history' && !_historyLoaded)  loadHistoryTab();
+    window.scrollTo(0, 0);
+  }
+  function pickNamePrompt(what) {
+    return `<div class="empty-msg">Select your name at the top to ${what}.</div>`;
+  }
+
+  async function loadYourTruck() {
+    const el = document.getElementById('truckContent');
+    if (!_techId) { el.innerHTML = pickNamePrompt('see your truck recommendations'); return; }
+    el.innerHTML = '<div class="loading-msg">Loading your truck…</div>';
+    _truckLoaded = true;
+    const d = await api(`/api/truck/recommendations?tech_id=${_techId}`).catch(() => null);
+    if (!d) { el.innerHTML = '<div class="empty-msg">Could not load recommendations.</div>'; _truckLoaded = false; return; }
+    const low = d.low || [], carry = d.carry || [];
+    if (!low.length && !carry.length) {
+      el.innerHTML = '<div class="empty-msg">No truck minimums set for you yet.<br>Use Browse to build a request, or ask the office to set your levels.</div>';
+      return;
+    }
+    let html = '';
+    if (low.length) {
+      html += `<div class="section-label" style="color:var(--yellow)">Running low — tap to add</div>`;
+      html += low.map(p => recCard(p, true)).join('');
+    }
+    if (carry.length) {
+      html += `<div class="section-label">You usually carry</div>`;
+      html += carry.map(p => recCard(p, false)).join('');
+    }
+    el.innerHTML = html;
+  }
+  function recCard(p, low) {
+    const sug = low ? Math.max(1, Math.ceil(p.suggested_qty || 0)) : 1;
+    const inCart = _quantities[p.product_id] ? ' <span style="color:var(--green)">✓ in cart</span>' : '';
+    return `<div class="rec-card ${low ? 'low' : ''}">
+      <div style="min-width:0">
+        <div style="font-weight:600;font-size:.9rem">${escHtml(p.product_name)}${inCart}</div>
+        <div style="font-size:.72rem;color:var(--muted)">On truck ${fmtQty(p.current_qty)} · min ${fmtQty(p.min_qty)} ${escHtml(p.storage_unit)}</div>
+      </div>
+      <button class="rec-add" onclick="addRecToCart(${p.product_id}, ${sug})">+ ${sug} ${escHtml(p.storage_unit)}</button>
+    </div>`;
+  }
+  function addRecToCart(pid, qty) {
+    const p = _products.find(x => x.id == pid);
+    _quantities[pid] = { qty: qty, mode: 'storage' };
+    // Keep the Browse card in sync so it reflects what's in the cart
+    const input = document.getElementById('qty-' + pid);
+    const card  = document.getElementById('card-' + pid);
+    if (input) { setMode(pid, 'storage'); input.value = qty; input.classList.add('has-value'); }
+    if (card) card.classList.add('active');
+    updateSubmitBtn();
+    saveDraft();
+    loadYourTruck();
+  }
+
+  // ── My Truck: actual inventory + self-audit + self-set levels ──
+  let _myTruckItems = [];
+  let _myOpenFlags = new Set();
+  const MT_BTN = 'padding:10px;border:1px solid var(--border);border-radius:9px;background:var(--surface2);color:var(--text);font-weight:600;font-size:.85rem;font-family:inherit;cursor:pointer';
+  async function loadMyTruck() {
+    const el = document.getElementById('myTruckContent');
+    if (!(_me && _me.technician_id) && !_techId) { el.innerHTML = pickNamePrompt('see your truck'); return; }
+    el.innerHTML = '<div class="loading-msg">Loading your truck…</div>';
+    _myTruckLoaded = true;
+    const url = (_me && _me.technician_id) ? '/api/my-truck' : `/api/my-truck?technician_id=${_techId}`;
+    const d = await api(url).catch(() => null);
+    if (!d) { el.innerHTML = '<div class="empty-msg">Could not load your truck.</div>'; _myTruckLoaded = false; return; }
+    _myTruckItems = d.items || [];
+    _myOpenFlags = new Set(d.open_flags || []);
+    if (!_myTruckItems.length) { el.innerHTML = '<div class="empty-msg">Nothing on your truck yet.</div>'; return; }
+    const lowCount = _myTruckItems.filter(i => i.alert_qty > 0 && i.quantity_storage_units <= i.alert_qty).length;
+    let html = `<div class="section-label">My truck — ${_myTruckItems.length} item${_myTruckItems.length!==1?'s':''}${lowCount?` · <span style="color:var(--yellow)">${lowCount} low</span>`:''}</div>
+      <div style="font-size:.75rem;color:var(--muted);padding:0 14px 10px;line-height:1.5">Fix your own counts and set how much you want to keep. Changes here only affect <strong>your truck</strong> — nothing is added back to the warehouse.</div>`;
+    html += _myTruckItems.map(myTruckCard).join('');
+    el.innerHTML = html;
+  }
+  function myTruckCard(i) {
+    const qty = i.quantity_storage_units, keep = i.min_qty || 0, alertLvl = i.alert_qty || 0;
+    const low = alertLvl > 0 && qty <= alertLvl, out = qty <= 0;
+    const usage = i.conversion_factor ? Math.round(qty * i.conversion_factor) : null;
+    const flagged = _myOpenFlags.has(i.product_id);
+    const u = escHtml(i.storage_unit);
+    const badge = out ? '<span style="font-size:.6rem;font-weight:700;color:var(--red);background:rgba(239,68,68,.15);padding:1px 6px;border-radius:4px;margin-left:6px">OUT</span>'
+      : low ? '<span style="font-size:.6rem;font-weight:700;color:var(--yellow);background:rgba(245,158,11,.15);padding:1px 6px;border-radius:4px;margin-left:6px">LOW</span>' : '';
+    const levelsText = (keep > 0 || alertLvl > 0)
+      ? `Keep <strong style="color:var(--text)">${fmtQty(keep)}</strong> · warn at <strong style="color:var(--text)">${fmtQty(alertLvl)}</strong> ${u}`
+      : '<span style="color:var(--muted)">No levels set — tap “Set levels”</span>';
+    return `<div class="rec-card ${low?'low':''}" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div>
+        <div style="font-weight:600;font-size:.95rem">${escHtml(i.product_name)} ${flagged?'🚩':''}${badge}</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:2px">On truck <strong style="color:var(--text);font-size:.9rem">${fmtQty(qty)} ${u}</strong>${usage!=null?` <span style="opacity:.85">(${fmtQty(usage)} ${escHtml(i.usage_unit)})</span>`:''}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:3px">${levelsText}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="mtToggle(${i.product_id},'count')" style="${MT_BTN};flex:1">✏️ Fix count</button>
+        <button onclick="mtToggle(${i.product_id},'levels')" style="${MT_BTN};flex:1">🎯 Set levels</button>
+      </div>
+      <div id="mtcount-${i.product_id}" style="display:none">
+        <label style="font-size:.8rem;color:var(--muted)">How many ${u} do you actually have right now?</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <input type="number" inputmode="decimal" step="any" min="0" id="mtqty-${i.product_id}" placeholder="0"
+            style="flex:1;font-size:1.1rem;padding:12px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+          <span style="color:var(--muted);min-width:48px">${u}</span>
+        </div>
+        <button onclick="mtSaveCount(${i.product_id}, this)" style="margin-top:8px;width:100%;padding:12px;border:none;border-radius:9px;background:var(--green);color:#062015;font-weight:800">✓ Save my count</button>
+      </div>
+      <div id="mtlevels-${i.product_id}" style="display:none">
+        <label style="font-size:.8rem;color:var(--muted)">How many ${u} do you want to <strong style="color:var(--text)">keep</strong> on your truck?</label>
+        <input type="number" inputmode="decimal" step="any" min="0" id="mtkeep-${i.product_id}" value="${keep||''}" placeholder="e.g. 1"
+          style="width:100%;font-size:1.05rem;padding:11px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-top:6px">
+        <label style="font-size:.8rem;color:var(--muted);display:block;margin-top:12px"><strong style="color:var(--text)">Warn me to restock</strong> when I'm at or below…</label>
+        <input type="number" inputmode="decimal" step="any" min="0" id="mtalert-${i.product_id}" value="${alertLvl||''}" placeholder="e.g. 0.5"
+          style="width:100%;font-size:1.05rem;padding:11px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-top:6px">
+        <button onclick="mtSaveLevels(${i.product_id}, this)" style="margin-top:12px;width:100%;padding:12px;border:none;border-radius:9px;background:var(--blue);color:#fff;font-weight:800">Save my levels</button>
+      </div>
+    </div>`;
+  }
+  function mtToggle(pid, which) {
+    const other = which === 'count' ? 'levels' : 'count';
+    const box = document.getElementById('mt'+which+'-'+pid);
+    const otherBox = document.getElementById('mt'+other+'-'+pid);
+    if (otherBox) otherBox.style.display = 'none';
+    if (box) {
+      const show = box.style.display === 'none';
+      box.style.display = show ? 'block' : 'none';
+      if (show && which === 'count') { const inp = document.getElementById('mtqty-'+pid); if (inp) inp.focus(); }
+    }
+  }
+  async function mtSaveCount(pid, btn) {
+    const qty = parseFloat(document.getElementById('mtqty-'+pid).value);
+    if (isNaN(qty) || qty < 0) { alert('Enter your actual count (0 is OK).'); return; }
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const body = { product_id: pid, quantity: qty };
+      if (!(_me && _me.technician_id)) body.technician_id = _techId;
+      await api('/api/my-truck/audit', { method:'POST', body: JSON.stringify(body) });
+      _myTruckLoaded = false; await loadMyTruck(); loadMyFlags();
+    } catch(e) { alert(e.message); btn.disabled = false; btn.textContent = '✓ Save my count'; }
+  }
+  async function mtSaveLevels(pid, btn) {
+    const keepV = document.getElementById('mtkeep-'+pid).value;
+    const alertV = document.getElementById('mtalert-'+pid).value;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const body = { product_id: pid, min_qty: keepV === '' ? 0 : parseFloat(keepV), alert_qty: alertV === '' ? 0 : parseFloat(alertV) };
+      if (!(_me && _me.technician_id)) body.technician_id = _techId;
+      await api('/api/my-truck/par', { method:'POST', body: JSON.stringify(body) });
+      _myTruckLoaded = false; _truckLoaded = false; await loadMyTruck();
+    } catch(e) { alert(e.message); btn.disabled = false; btn.textContent = 'Save my levels'; }
+  }
+
+  async function loadHistoryTab() {
+    const el = document.getElementById('historyContent');
+    if (!_techId) { el.innerHTML = pickNamePrompt('see your order history'); return; }
+    el.innerHTML = '<div class="loading-msg">Loading your history…</div>';
+    _historyLoaded = true;
+    const d = await api(`/api/requests/history?tech_id=${_techId}&limit=30`).catch(() => null);
+    if (!d) { el.innerHTML = '<div class="empty-msg">Could not load history.</div>'; _historyLoaded = false; return; }
+    const reqs = d.requests || [];
+    if (!reqs.length) { el.innerHTML = '<div class="empty-msg">No past requests yet.</div>'; return; }
+    window._histReqs = {};
+    el.innerHTML = reqs.map(r => {
+      const when = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}) : '';
+      const sc = { approved:['var(--green)','Approved'], pending:['var(--yellow)','Pending'], cancelled:['var(--muted)','Cancelled'], rejected:['var(--red)','Rejected'] }[r.status] || ['var(--muted)', r.status || '—'];
+      const items = r.items || [];
+      window._histReqs[r.id] = items;
+      const preview = items.slice(0,3).map(i => escHtml(i.product_name)).join(', ') + (items.length > 3 ? `, +${items.length-3}` : '');
+      return `<div class="hist-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-weight:600;font-size:.9rem">${when}</span>
+          <span class="pill" style="background:${sc[0]};color:#0f172a">${sc[1]}</span>
+        </div>
+        <div style="font-size:.78rem;color:var(--muted)">${items.length} item${items.length!==1?'s':''} · ${preview || '—'}</div>
+        <button class="rec-add" style="margin-top:10px;background:var(--surface2);color:var(--blue);border:1px solid var(--border)" onclick="reorderRequest(${r.id})">↻ Reorder these</button>
+      </div>`;
+    }).join('');
+  }
+  function reorderRequest(reqId) {
+    const items = (window._histReqs || {})[reqId] || [];
+    if (!items.length) return;
+    items.forEach(it => {
+      const pid = it.product_id;
+      if (!pid) return;
+      const mode = it.unit_mode || 'usage';
+      // history stores quantity_requested in USAGE units; reverse to storage if needed
+      let qty = it.quantity_requested;
+      if (mode === 'storage' && it.conversion_factor) qty = it.quantity_requested / it.conversion_factor;
+      _quantities[pid] = { qty: qty, mode: mode };
+      const input = document.getElementById('qty-' + pid);
+      if (input) {
+        setMode(pid, mode);
+        input.value = fmtQty(qty);
+        input.classList.add('has-value');
+        const c = document.getElementById('card-' + pid);
+        if (c) c.classList.add('active');
+      }
+    });
+    updateSubmitBtn();
+    saveDraft();
+    switchTab('browse');
+    openReview();
+  }
+
+  function renderProducts() {
+    const area = document.getElementById('productArea');
+    if (!_products.length) {
+      area.innerHTML = '<div class="empty-msg">No active products found.</div>';
+      return;
+    }
+
+    // Separate equipment from consumables
+    const consumables = _products.filter(p => !p.is_equipment);
+    const equipment   = _products.filter(p =>  p.is_equipment);
+
+    let html = '';
+
+    if (consumables.length) {
+      html += `<div class="section-label">Chemicals &amp; Consumables</div>`;
+      html += consumables.map(p => productCard(p)).join('');
+    }
+    if (equipment.length) {
+      html += `<div class="section-label">Equipment</div>`;
+      html += equipment.map(p => productCard(p)).join('');
+    }
+
+    area.innerHTML = html;
+  }
+
+  function productCard(p) {
+    const note = p.conversion_note ? `<div class="product-note">ℹ️ ${escHtml(p.conversion_note)}</div>` : '';
+    const usageLabel   = `Usage units (${escHtml(p.usage_unit)})`;
+    const storageLabel = `Storage units (${escHtml(p.storage_unit)})`;
+    const sameUnit     = p.usage_unit === p.storage_unit || p.conversion_factor == 1;
+    const toggleHtml = sameUnit ? '' : `
+      <div class="unit-toggle">
+        <button class="unit-btn selected" id="btn-usage-${p.id}"
+          onclick="setMode(${p.id},'usage')">
+          ${escHtml(p.usage_unit)}<br><span style="font-size:.66rem;font-weight:400;opacity:.8">Usage unit</span>
+        </button>
+        <button class="unit-btn" id="btn-storage-${p.id}"
+          onclick="setMode(${p.id},'storage')">
+          ${escHtml(p.storage_unit)}<br><span style="font-size:.66rem;font-weight:400;opacity:.8">Storage unit</span>
+        </button>
+      </div>`;
+    const unitLabelHtml = sameUnit
+      ? `<div class="qty-label">${escHtml(p.usage_unit)}</div>`
+      : `<div class="qty-label" id="qlabel-${p.id}">${escHtml(p.usage_unit)}</div>`;
+
+    return `<div class="product-card" id="card-${p.id}">
+      <div class="product-header">
+        <div class="product-name">${escHtml(p.name)}</div>
+        ${note}
+      </div>
+      ${toggleHtml}
+      <div class="qty-row">
+        ${unitLabelHtml}
+        <input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
+          class="qty-input" id="qty-${p.id}"
+          placeholder="0"
+          oninput="onQtyChange(${p.id})"
+          onfocus="this.select()">
+        <div class="qty-stepper">
+          <button class="step-btn" onclick="step(${p.id},1)">＋</button>
+          <button class="step-btn" onclick="step(${p.id},-1)">－</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function setMode(pid, mode) {
+    const p = _products.find(x => x.id == pid);
+    if (!p) return;
+    const btnU = document.getElementById(`btn-usage-${pid}`);
+    const btnS = document.getElementById(`btn-storage-${pid}`);
+    if (btnU) btnU.classList.toggle('selected', mode==='usage');
+    if (btnS) btnS.classList.toggle('selected', mode==='storage');
+    const qlabel = document.getElementById(`qlabel-${pid}`);
+    if (qlabel) qlabel.textContent = mode === 'usage' ? p.usage_unit : p.storage_unit;
+    if (!_quantities[pid]) _quantities[pid] = { qty: 0, mode };
+    else _quantities[pid].mode = mode;
+    saveDraft();
+  }
+
+  function step(pid, dir) {
+    const input = document.getElementById(`qty-${pid}`);
+    const p = _products.find(x => x.id == pid);
+    const mode = _quantities[pid]?.mode || 'usage';
+    // Determine sensible step size
+    const step = (mode === 'usage' && p && p.conversion_factor != 1) ? parseFloat((1).toFixed(2)) : 1;
+    const cur = parseFloat(input.value) || 0;
+    const next = Math.max(0, parseFloat((cur + dir * step).toFixed(4)));
+    input.value = next || '';
+    onQtyChange(pid);
+  }
+
+  function onQtyChange(pid) {
+    const input = document.getElementById(`qty-${pid}`);
+    const card  = document.getElementById(`card-${pid}`);
+    const val = parseFloat(input.value) || 0;
+    const mode = _quantities[pid]?.mode || 'usage';
+    if (val > 0) {
+      _quantities[pid] = { qty: val, mode };
+      input.classList.add('has-value');
+      card.classList.add('active');
+    } else {
+      delete _quantities[pid];
+      input.classList.remove('has-value');
+      card.classList.remove('active');
+    }
+    updateSubmitBtn();
+    saveDraft();
+  }
+
+  function updateSubmitBtn() {
+    const items = Object.keys(_quantities).filter(k => _quantities[k].qty > 0);
+    const btn = document.getElementById('reviewBtn');
+    const badge = document.getElementById('itemsBadge');
+    badge.textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
+    btn.disabled = !_techId || items.length === 0;
+  }
+
+  function openReview() {
+    if (!_techId) { alert('Please select your name first.'); return; }
+
+    // Tech name label
+    const sel = document.getElementById('techSelect');
+    const techName = sel.options[sel.selectedIndex]?.text || '—';
+    document.getElementById('reviewTechName').textContent = `For: ${techName}`;
+
+    // Build selected items grouped by type
+    const selected = Object.entries(_quantities)
+      .filter(([, v]) => v.qty > 0)
+      .map(([pid, v]) => ({ p: _products.find(x => x.id == pid), qty: v.qty, mode: v.mode }))
+      .filter(x => x.p);
+
+    const consumables = selected.filter(x => !x.p.is_equipment);
+    const equipment   = selected.filter(x =>  x.p.is_equipment);
+
+    let html = '';
+    function renderGroup(group) {
+      group.forEach(({ p, qty, mode }) => {
+        const unit = mode === 'storage' ? p.storage_unit : p.usage_unit;
+        html += `<div class="review-item">
+          <div class="review-item-name">${escHtml(p.name)}</div>
+          <div class="review-item-right" style="display:flex;align-items:center;gap:10px">
+            <div>
+              <div class="review-item-qty">${fmtQty(qty)}</div>
+              <span class="review-item-unit">${escHtml(unit)}</span>
+            </div>
+            <button class="review-edit-btn" onclick="editFromReview(${p.id})">✏️ Edit</button>
+          </div>
+        </div>`;
+      });
+    }
+    if (consumables.length) {
+      html += `<div class="review-section-lbl">Chemicals &amp; Consumables</div>`;
+      renderGroup(consumables);
+    }
+    if (equipment.length) {
+      html += `<div class="review-section-lbl">Equipment</div>`;
+      renderGroup(equipment);
+    }
+    const total = selected.length;
+    html += `<div class="review-total-row">${total} item${total !== 1 ? 's' : ''} total</div>`;
+
+    document.getElementById('reviewList').innerHTML = html;
+
+    // Reset submit button state
+    const sb = document.getElementById('reviewSubmitBtn');
+    sb.disabled = false; sb.textContent = 'Submit Request ✓';
+
+    document.getElementById('reviewOverlay').classList.add('show');
+    document.getElementById('reviewList').scrollTop = 0;
+  }
+
+  function closeReview() {
+    document.getElementById('reviewOverlay').classList.remove('show');
+  }
+
+  function editFromReview(pid) {
+    closeReview();
+    // Clear any active search so the card is visible
+    const searchInp = document.getElementById('productSearch');
+    if (searchInp && searchInp.value) {
+      searchInp.value = '';
+      filterProducts('');
+    }
+    const card  = document.getElementById('card-' + pid);
+    const input = document.getElementById('qty-' + pid);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.style.borderColor = 'var(--yellow)';
+      setTimeout(() => { card.style.borderColor = ''; }, 1500);
+    }
+    if (input) setTimeout(() => { input.focus(); input.select(); }, 300);
+  }
+
+  function fmtQty(n) {
+    // Trim trailing zeros up to 4 decimal places
+    return parseFloat(n.toFixed(4)).toString();
+  }
+
+  async function submitRequest() {
+    if (!_techId) { alert('Please select your name first.'); return; }
+    const items = Object.entries(_quantities)
+      .filter(([,v]) => v.qty > 0)
+      .map(([pid, v]) => {
+        const p = _products.find(x => x.id == pid);
+        // Always send quantity in usage units — backend will convert to storage
+        let qty = v.qty;
+        if (v.mode === 'storage' && p) {
+          qty = v.qty * parseFloat(p.conversion_factor);
+        }
+        return { product_id: parseInt(pid), quantity: qty, unit_mode: v.mode };
+      });
+
+    const btn = document.getElementById('reviewSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      await api('/api/requests', {
+        method: 'POST',
+        body: JSON.stringify({ technician_id: parseInt(_techId), items })
+      });
+      clearDraft();   // request is in — don't let a reload resurrect it
+      _quantities = {};
+      document.getElementById('reviewOverlay').classList.remove('show');
+      document.getElementById('successOverlay').classList.add('show');
+    } catch(e) {
+      if (e.message === 'Session expired') return;   // already handled (redirecting)
+      alert('Error submitting request: ' + e.message);
+      btn.disabled = false; btn.textContent = 'Submit Request ✓';
+    }
+  }
+
+  function filterProducts(query) {
+    const q = query.trim().toLowerCase();
+    const area = document.getElementById('productArea');
+    const cards = area.querySelectorAll('.product-card');
+    let totalVisible = 0;
+
+    cards.forEach(card => {
+      const name = card.querySelector('.product-name')?.textContent.toLowerCase() || '';
+      const show = !q || name.includes(q);
+      card.style.display = show ? '' : 'none';
+      if (show) totalVisible++;
+    });
+
+    // Hide section labels when all their product cards are hidden
+    const labels = area.querySelectorAll('.section-label');
+    labels.forEach(label => {
+      let sib = label.nextElementSibling;
+      let hasVisible = false;
+      while (sib && !sib.classList.contains('section-label')) {
+        if (sib.classList.contains('product-card') && sib.style.display !== 'none') {
+          hasVisible = true;
+          break;
+        }
+        sib = sib.nextElementSibling;
+      }
+      label.style.display = hasVisible ? '' : 'none';
+    });
+
+    // Clear button visibility
+    document.getElementById('searchClear').style.display = q ? '' : 'none';
+
+    // No-results message
+    const noRes = document.getElementById('noResultsMsg');
+    if (q && totalVisible === 0) {
+      document.getElementById('noResultsTerm').textContent = query.trim();
+      noRes.style.display = 'block';
+    } else {
+      noRes.style.display = 'none';
+    }
+  }
+
+  function clearSearch() {
+    const inp = document.getElementById('productSearch');
+    inp.value = '';
+    filterProducts('');
+    inp.focus();
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Recount flags: admin asked this tech to recount an item ──
+  let _flagTimer = null;
+  function startFlagWatch() {
+    loadMyFlags();
+    if (_flagTimer) clearInterval(_flagTimer);
+    _flagTimer = setInterval(loadMyFlags, 60000);   // re-check every minute
+    // Re-check when the app comes back to the foreground (phone unlock / tab focus)
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadMyFlags(); });
+  }
+  async function loadMyFlags() {
+    let url = '/api/flags?status=open';
+    if (!(_me && _me.technician_id)) {
+      if (!_techId) return;                  // shared login, no name picked yet
+      url += `&technician_id=${_techId}`;
+    }
+    let flags = [];
+    try { flags = await api(url); } catch(e) { return; }
+    renderFlagAlert(flags || []);
+  }
+  function renderFlagAlert(flags) {
+    const overlay = document.getElementById('flagAlert');
+    const body = document.getElementById('flagAlertBody');
+    if (!flags.length) { overlay.style.display = 'none'; body.innerHTML = ''; return; }
+    body.innerHTML = flags.map(f => {
+      const unit = f.storage_unit || '';
+      return `<div class="flag-item" data-fid="${f.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+        <div style="font-weight:800;font-size:1.1rem;color:var(--text)">${escHtml(f.product_name)}</div>
+        ${f.note ? `<div style="color:var(--muted);margin:6px 0 12px">${escHtml(f.note)}</div>` : '<div style="margin-bottom:12px"></div>'}
+        <label style="font-size:.85rem;color:var(--muted)">How many <strong style="color:var(--text)">${escHtml(unit)}</strong> do you actually have?</label>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <input type="number" inputmode="decimal" step="any" min="0" class="flag-qty" placeholder="0"
+            style="flex:1;font-size:1.2rem;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+          <span style="color:var(--muted);min-width:54px">${escHtml(unit)}</span>
+        </div>
+        <button class="flag-confirm" onclick="resolveFlag(${f.id}, this)"
+          style="margin-top:12px;width:100%;padding:14px;border:none;border-radius:10px;background:var(--green);color:#062015;font-weight:800;font-size:1.05rem">✓ Confirm count</button>
+      </div>`;
+    }).join('');
+    overlay.style.display = 'flex';
+  }
+  async function resolveFlag(fid, btn) {
+    const wrap = btn.closest('.flag-item');
+    const qty = parseFloat(wrap.querySelector('.flag-qty').value);
+    if (isNaN(qty) || qty < 0) { alert('Enter how many you have (0 is OK).'); return; }
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      await api(`/api/flags/${fid}/resolve`, { method:'POST', body: JSON.stringify({ quantity: qty }) });
+      wrap.remove();
+      if (!document.querySelectorAll('#flagAlertBody .flag-item').length) {
+        document.getElementById('flagAlert').style.display = 'none';
+      }
+      _truckLoaded = false; _myTruckLoaded = false;
+      if (_currentTab === 'truck') loadYourTruck();
+      if (_currentTab === 'mytruck') loadMyTruck();
+    } catch(e) { alert(e.message); btn.disabled = false; btn.textContent = '✓ Confirm count'; }
+  }
+
+  async function boot() {
+    try { _me = await api('/api/me'); } catch(e) { _me = null; }
+    await loadData();
+    startFlagWatch();
+  }
+  boot();
+
+  // Register service worker for PWA install support
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>

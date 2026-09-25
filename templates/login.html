@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory Request</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1e293b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Inventory Request">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; gap: 16px; }
+  .card { background: #1e293b; border-radius: 12px; padding: 40px 36px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  h1 { color: #f1f5f9; font-size: 1.5rem; margin-bottom: 8px; }
+  p { color: #94a3b8; font-size: .875rem; margin-bottom: 32px; }
+  label { display: block; color: #cbd5e1; font-size: .8rem; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+  input { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; color: #f1f5f9; font-size: 1rem; margin-bottom: 20px; transition: border-color .2s; }
+  input:focus { outline: none; border-color: #3b82f6; }
+  .sign-in-btn { width: 100%; background: #3b82f6; color: #fff; border: none; border-radius: 8px; padding: 13px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background .2s; }
+  .sign-in-btn:hover { background: #2563eb; }
+  .error { background: #450a0a; border: 1px solid #dc2626; border-radius: 8px; color: #fca5a5; padding: 12px; margin-bottom: 20px; font-size: .875rem; }
+  .logo { font-size: 2rem; margin-bottom: 16px; }
+
+  /* ── Install card ── */
+  .install-card {
+    display: none;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 18px 20px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+  }
+  .install-card.show { display: block; }
+  .install-title {
+    font-size: .8rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 12px;
+  }
+  /* iOS instructions */
+  .ios-steps {
+    display: none;
+    color: #cbd5e1;
+    font-size: .88rem;
+    line-height: 1.7;
+  }
+  .ios-steps .step { display: flex; align-items: center; gap: 10px; text-align: left; margin-bottom: 6px; }
+  .ios-steps .num { background: #3b82f6; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
+  /* Android button */
+  .install-btn {
+    display: none;
+    width: 100%;
+    background: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .install-btn:active { opacity: .8; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">📦</div>
+  <h1>Inventory Request</h1>
+  <p>Sign in to continue</p>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="error">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+  <form method="POST">
+    <label>Username</label>
+    <input type="text" name="username" autofocus required autocomplete="username">
+    <label>Password</label>
+    <input type="password" name="password" required autocomplete="current-password">
+    <button type="submit" class="sign-in-btn">Sign In</button>
+  </form>
+</div>
+
+<!-- Install prompt card — shown by JS based on device -->
+<div class="install-card" id="installCard">
+  <div class="install-title">📲 Install as App</div>
+
+  <!-- iOS -->
+  <div class="ios-steps" id="iosSteps">
+    <div class="step"><div class="num">1</div><span>Tap the <strong>Share</strong> button <strong>⬆</strong> at the bottom of Safari</span></div>
+    <div class="step"><div class="num">2</div><span>Scroll down and tap <strong>"Add to Home Screen"</strong></span></div>
+    <div class="step"><div class="num">3</div><span>Tap <strong>Add</strong> — done!</span></div>
+  </div>
+
+  <!-- Android -->
+  <button class="install-btn" id="installBtn">➕ Add to Home Screen</button>
+</div>
+
+<script>
+  // Don't show install UI if already running as installed app
+  const isStandalone = window.navigator.standalone === true ||
+                       window.matchMedia('(display-mode: standalone)').matches;
+
+  if (!isStandalone) {
+    const ua = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(ua);
+    const card  = document.getElementById('installCard');
+
+    if (isIOS) {
+      // iOS: no automatic prompt — show manual instructions
+      document.getElementById('iosSteps').style.display = 'block';
+      card.classList.add('show');
+    }
+
+    // Android/Chrome: capture the beforeinstallprompt event and show a button
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBtn').style.display = 'block';
+      card.classList.add('show');
+    });
+
+    document.getElementById('installBtn').addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      if (outcome === 'accepted') card.classList.remove('show');
+    });
+  }
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
